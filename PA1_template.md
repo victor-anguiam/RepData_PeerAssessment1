@@ -6,8 +6,14 @@
 We load data as data.frame with appropiate field classes:
 
 ```r
-setwd("/Volumes/Docs e VTC [Backup]/Docs/_Cursos, Titulacións e Certificacións/coursera.org/Coursera - Reproducible Research/Peer Assessment/Peer Assessment 1/RepData_PeerAssessment1")
-# setwd('~/RepData_PeerAssessment1')
+setwd("RepData_PeerAssessment1")
+```
+
+```
+## Error: no es posible cambiar el directorio de trabajo
+```
+
+```r
 data.raw <- read.csv(unzip("activity.zip", "activity.csv"), colClasses = c("numeric", 
     "Date", "numeric"))
 str(data.raw)
@@ -35,7 +41,8 @@ To show the total number of steps taken each day we must sum 'steps' field for e
 ```r
 total.steps.per.day <- sapply(split(data$steps, data$date), sum, simplify = "array")
 hist(total.steps.per.day, nclass = length(total.steps.per.day), col = "blue", 
-    main = "Steps per day distribution", xlab = "Steps per day", ylab = "Total frequency")
+    main = "Steps per day distribution\nNAs omitted", xlab = "Steps per day", 
+    ylab = "Total frequency")
 ```
 
 ![plot of chunk totalstepsperdayhist](figure/totalstepsperdayhist.png) 
@@ -87,8 +94,6 @@ data <- data.raw
 and calculate how many of them are in the original dataset:
 
 ```r
-# data <- read.csv(unzip('activity.zip', 'activity.csv'),
-# colClasses=c('numeric', 'Date', 'numeric'))
 n_missing_values <- (dim(data) - dim(na.omit(data)))[1]
 print(n_missing_values)
 ```
@@ -107,23 +112,20 @@ activity.df <- data.frame(cbind(interval = as.numeric(names(activity)), steps = 
 and substitute NAs by these means:
 
 ```r
-# tmp <- merge.data.frame(data[is.na(data$steps),], activity.df, by.x=3,
-# by.y=1) data[is.na(data$steps),]$steps <- tmp$steps.y rm(tmp)
 data[is.na(data$steps), ]$steps <- activity.df$steps
 ```
 
-To calculate and show 
-the total number of steps taken each day from the NA-filled dataset:
+Next code calculates and shows the total number of steps taken each day from the NA-filled dataset. The second figure is the previous histogram obtained from a dataset with NAs omitted.
 
 ```r
 total.steps.each.day <- sapply(split(data$steps, data$date), sum, simplify = "array")
 hist(total.steps.each.day, nclass = length(total.steps.each.day), col = "blue", 
-    main = "Steps per day distribution", xlab = "Steps per day", ylab = "Total frequency")
+    main = "Steps per day distribution\nNAs substituted by interval mean", xlab = "Steps per day", 
+    ylab = "Total frequency")
 ```
 
 ![plot of chunk totalstepsperdayhistnasfilled](figure/totalstepsperdayhistnasfilled.png) 
 
-and we may compare with the histogram calculated before (NAs omitted):  
 ![plot of chunk totalstepsperdayhist](figure/totalstepsperdayhist.png) 
 
 We may say that both figures are similar. In fact calculate a sample mean after have added any number of previously calculaltded mean to the sample does not afect to the result.

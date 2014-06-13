@@ -1,20 +1,120 @@
 # Reproducible Research: Peer Assessment 1
-
+```{r setoptions,echo=FALSE}
+opts_chunk$set(echo=TRUE, results="show")
+```
 
 ## Loading and preprocessing the data
-
+We load data as data.frame with appropiate field classes:
+```{r loadingdata}
+setwd("RepData_PeerAssessment1")
+data.raw <- read.csv(unzip("activity.zip", "activity.csv"), 
+                 colClasses=c("numeric", "Date", "numeric"))
+str(data.raw)
+```
+As we may see there is some 'NA' in 'steps' field.
 
 
 ## What is mean total number of steps taken per day?
-
-
+We remove items with 'NA' values from our dataset:
+```{r meanstepsperday}
+data <- na.omit(data.raw)
+```
+To show the total number of steps taken each day we must sum 'steps' field for each day separatedly and then produce histogram:
+```{r totalstepsperdayhist, fig.height=5, fig.width=8}
+total.steps.per.day <- sapply(split(data$steps, data$date), sum, 
+                              simplify="array")
+hist(total.steps.per.day, nclass=length(total.steps.per.day), col="blue",
+     main="Steps per day distribution\nNAs omitted", 
+     xlab="Steps per day", ylab="Total frequency")
+```
+The mean and median number of steps taken per day is:
+```{r meanmedianstepsperday}
+summary(total.steps.per.day)[c(4,3)]
+```
 
 ## What is the average daily activity pattern?
-
-
+To elaborate and show this time series we have to select all steps for a given 5-minute interval and calculate the mean including all the days. It has to be applied to all interval in the dataset:
+```{r meanstepsperdayplot, fig.height=5, fig.width=8}
+activity <- sapply(split(data$steps, data$interval), 
+                   mean, simplify="array")
+plot(activity, type="l", col="blue",
+     main="Time series of averaged daily activity", 
+     xlab="interval", ylab="Averaged number of steps")
+```
+The interval which has higher average steps is:
+```{r maxmeansteps}
+n_interval_maximum_steps = which(activity == max(activity))
+print(n_interval_maximum_steps)
+```
+In other words: the `r names(n_interval_maximum_steps)`th element of the series is the 5-minunte interval `r as.numeric(n_interval_maximum_steps)`, which as a mean of `r max(activity)` steps.
 
 ## Imputing missing values
-
-
+To take account of missing values we have to fresh our data set:
+```{r datasetwithnas}
+data <- data.raw
+```
+and calculate how many of them are in the original dataset:
+```{r numofnas}
+n_missing_values <- (dim(data) - dim(na.omit(data)))[1]
+print(n_missing_values)
+```
+As strategy to fill missing values we have chosen to calculate mean steps on each 5-minute interval (for all days). Before filling in our dataset, we create a new data.frame with means by interval:
+```{r meanstepsperinterval}
+activity <- sapply(split(data$steps, data$interval), 
+                   mean, na.rm=TRUE, simplify="array")
+activity.df <- data.frame(cbind(interval=as.numeric(names(activity)), steps=activity))
+```
+and substitute NAs by these means:
+```{r fillingnas}
+data[is.na(data$steps),]$steps <- activity.df$steps
+```
+Next code calculates and shows the total number of steps taken each day from the NA-filled dataset. The second figure is the previous histogram obtained from a dataset with NAs omitted.
+```{r totalstepsperdayhistnasfilled, fig.height=5, fig.width=8}
+total.steps.each.day <- sapply(split(data$steps, data$date), 
+                               sum, simplify="array")
+hist(total.steps.each.day, nclass=length(total.steps.each.day), col="blue",
+     main="Steps per day distribution\nNAs substituted by interval mean", 
+     xlab="Steps per day", ylab="Total frequency")
+```
+```{r totalstepsperdayhist, echo=FALSE, fig.height=5, fig.width=8}
+```
+We may say that both figures are similar. In fact calculate a sample mean after have added any number of previously calculaltded mean to the sample does not afect to the result.
+Maybe any oder strategy to fill missing values should affect to the sample's distribution, but not ours.
+The global mean and median is:
+```{r meanmedianstepsperdaynasincluded}
+summary(total.steps.each.day)[c(4,3)]
+```
+and we may see both are not affected by our strategy.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+We identify the week days and transform them to "weekend" if they are Saturday or Sunday and "weekday" in other case, add the vector as a new field "weekend" into our dataset:
+```{r assignweekdays}
+tmp <- as.POSIXlt(data$date)$wday
+tmp <- ifelse(tmp%%6 == 0, "weekend", "weekday")
+data <- cbind(data, weekdays=tmp)
+rm(tmp)
+```
+and calculate mean steps for each interval and each of "weekend" or "weekday". To obtain again factors as both fields, we have had to use regular expressions:
+```{r meanstepsbyintervalandweekday}
+average.steps.across.weekdays <- 
+    sapply(split(data$steps, list(data$weekdays, data$interval)), 
+           mean, simplify="array")
+steps <- as.numeric(grep("[0-9]*", 
+                         names(average.steps.across.weekdays)))
+x <- names(average.steps.across.weekdays)
+m <- regexpr("[0-9]{1,}", x)
+interval <- as.numeric(regmatches(x, m))
+m <- regexpr("[a-z]{7}", x)
+weekdays <- regmatches(x, m)
+```
+and create a data frame to ease plotting:
+```{r meanstepsbyintervalandweekdayplot, fig.height=5, fig.width=10}
+d <- data.frame(steps=average.steps.across.weekdays, 
+                interval=interval, 
+                weekdays=weekdays)
+library(lattice)
+xyplot(d$steps ~ d$interval | d$weekdays, type="l", col="blue",
+       xlab="Interval", ylab="Number of steps")
+```
+
+
